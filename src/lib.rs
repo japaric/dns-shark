@@ -158,16 +158,11 @@ struct Udp {
 mod tests {
     use std::{net::UdpSocket, thread, time::Duration};
 
-    use rand::Rng;
-
     use super::*;
-
-    const MIN_PORT: u16 = 1024;
 
     #[test]
     fn it_works() -> Result<()> {
-        let port = random_udp_port();
-        let server = UdpSocket::bind(("127.0.0.1", port))?;
+        let (server, port) = udp_socket_with_port()?;
 
         let shark = DnsShark::eavesdrop(port)?;
 
@@ -225,7 +220,8 @@ mod tests {
 
     #[test]
     fn drop_cleans_up_process() -> Result<()> {
-        let shark = DnsShark::eavesdrop(random_udp_port())?;
+        let (_socket, port) = udp_socket_with_port()?;
+        let shark = DnsShark::eavesdrop(port)?;
         let pid = shark.child.id();
         dbg!(pid);
         drop(shark);
@@ -243,7 +239,9 @@ mod tests {
         Ok(())
     }
 
-    fn random_udp_port() -> u16 {
-        rand::thread_rng().gen_range(MIN_PORT..u16::MAX)
+    fn udp_socket_with_port() -> Result<(UdpSocket, u16)> {
+        let socket = UdpSocket::bind("127.0.0.1:0")?;
+        let port = socket.local_addr().map(|addr| addr.port())?;
+        Ok((socket, port))
     }
 }
